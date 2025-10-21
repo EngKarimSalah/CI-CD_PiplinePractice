@@ -33,7 +33,7 @@ jobs:
         run: dotnet restore
       
       - name: Build
-        working-directory: ./backend
+        working-directory: ./Backend
         run: dotnet build --no-restore --configuration Release
       
       - name: Run tests
@@ -88,7 +88,7 @@ jobs:
       - name: Build and push Frontend image
         uses: docker/build-push-action@v5
         with:
-          context: ./frontend
+          context: ./Frontend
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
             ${{ env.FRONTEND_IMAGE }}:${{ env.IMAGE_TAG }}
