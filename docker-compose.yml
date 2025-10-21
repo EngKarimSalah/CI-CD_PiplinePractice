@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: sqlserver_container
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "Karim@Salah2025"
+    ports:
+      - "1434:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - weatherApp-network
+    restart: always
+
+  backend:
+    image: engkarimsalah/weatherapp:latest
+    container_name: weatherapplication_container
+    ports:
+      - "6004:8080"
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=weatherDB;User Id=sa;Password=Karim@Salah2025;TrustServerCertificate=True
+    depends_on:
+      - sqlserver
+    networks:
+      - weatherApp-network
+    restart: always
+
+  frontend:
+    image: engkarimsalah/weatherfrontend:latest
+    container_name: weatherfrontend_container
+    ports:
+      - "8085:80"
+    depends_on:
+      - backend
+    networks:
+      - weatherApp-network
+    restart: always
+
+networks:
+  weatherApp-network:
+    driver: bridge
+
+volumes:
+  sqlserver_data:
+    driver: local
