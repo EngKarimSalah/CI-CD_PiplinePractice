@@ -42,6 +42,16 @@ namespace WeatherApp.Controllers
             return Ok(data);
         }
 
+        [HttpGet("version")]
+        public IActionResult GetVersion()
+        {
+            return Ok(new
+            {
+                version = "2.0.0",
+                buildDate = DateTime.UtcNow,
+                message = "Updated via CI/CD pipeline!"
+            });
+        }
 
     }
 }
