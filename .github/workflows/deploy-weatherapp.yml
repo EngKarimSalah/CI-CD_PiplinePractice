@@ -17,7 +17,7 @@ jobs:
   # Job 1: Build and Test Backend
   build-backend:
     name: Build Backend
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     
     steps:
       - name: Checkout code
@@ -69,7 +69,7 @@ jobs:
   # Job 2: Build Frontend
   build-frontend:
     name: Build Frontend
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     
     steps:
       - name: Checkout code
@@ -104,7 +104,7 @@ jobs:
   update-manifests:
     name: Update K8s Manifests
     needs: [build-backend, build-frontend]
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: github.ref == 'refs/heads/main'
     
     steps:
@@ -137,7 +137,7 @@ jobs:
   deployment-summary:
     name: Deployment Summary
     needs: [update-manifests]
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: github.ref == 'refs/heads/main'
     
     steps:
@@ -174,7 +174,7 @@ jobs:
   deploy-to-kubernetes:
     name: Deploy to Kubernetes
     needs: [build-backend, build-frontend]
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: github.ref == 'refs/heads/main'
     
     steps:
