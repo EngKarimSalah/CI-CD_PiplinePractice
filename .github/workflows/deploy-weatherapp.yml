@@ -169,3 +169,58 @@ jobs:
           echo "4. Check pods:"
           echo "   kubectl get pods -l app=weatherapp-backend"
           echo "   kubectl get pods -l app=weatherapp-frontend"
+  
+  # NEW JOB: Automatic Deployment
+  deploy-to-kubernetes:
+    name: Deploy to Kubernetes
+    needs: [build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+      
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+      
+      - name: Update Backend Image
+        run: |
+          kubectl set image deployment/weatherapp-backend \
+            backend=${{ secrets.DOCKERHUB_USERNAME }}/weatherapp-backend:latest \
+            --record
+      
+      - name: Update Frontend Image
+        run: |
+          kubectl set image deployment/weatherapp-frontend \
+            frontend=${{ secrets.DOCKERHUB_USERNAME }}/weatherapp-frontend:latest \
+            --record
+      
+      - name: Wait for Backend Rollout
+        run: |
+          kubectl rollout status deployment/weatherapp-backend --timeout=5m
+      
+      - name: Wait for Frontend Rollout
+        run: |
+          kubectl rollout status deployment/weatherapp-frontend --timeout=5m
+      
+      - name: Verify Deployment
+        run: |
+          echo "✅ Deployment Complete!"
+          echo ""
+          echo "📊 Pod Status:"
+          kubectl get pods -l app=weatherapp-backend
+          kubectl get pods -l app=weatherapp-frontend
+          echo ""
+          echo "🌐 Services:"
+          kubectl get svc weatherapp-backend weatherapp-frontend
+          echo ""
+          echo "🎉 Application deployed successfully!"
