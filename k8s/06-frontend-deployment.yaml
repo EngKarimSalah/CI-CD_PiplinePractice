@@ -15,7 +15,7 @@ spec:
         app: weatherapp-frontend
     spec:
       containers:
-      - name: frontend
+      - name: weatherapp-frontend
         image: engkarimsalah/weatherapp-frontend:latest  # Will be updated by pipeline
         ports:
         - containerPort: 80
