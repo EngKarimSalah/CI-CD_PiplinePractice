@@ -15,7 +15,7 @@ spec:
         app: weatherapp-backend
     spec:
       containers:
-      - name: backend
+      - name: weatherapp-backend
         image: engkarimsalah/weatherapp-backend:latest
         ports:
         - containerPort: 8080
@@ -36,7 +36,6 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
-        # Health checks removed - backend doesn't have /health endpoint
 ---
 apiVersion: v1
 kind: Service
