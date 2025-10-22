@@ -43,7 +43,7 @@ namespace WeatherApp.Controllers
             //testing for the starting state
             data.Add(new Weather { CityName = "Alexandria", degree = 26 });
             data.Add(new Weather { CityName = "Ibri", degree = 12 });
-
+            data.Add(new Weather { CityName = "Nizwa", degree = 28 });
             return Ok(data);
         }
 
