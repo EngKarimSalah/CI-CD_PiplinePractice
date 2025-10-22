@@ -5,7 +5,7 @@ metadata:
   labels:
     app: weatherapp-frontend
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: weatherapp-frontend
@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: YOUR_DOCKERHUB_USERNAME/weatherapp-frontend:latest  # Will be updated by pipeline
+        image: engkarimsalah/weatherapp-frontend:latest  # Will be updated by pipeline
         ports:
         - containerPort: 80
         resources:
