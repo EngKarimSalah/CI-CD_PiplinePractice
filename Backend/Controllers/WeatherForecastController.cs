@@ -47,7 +47,7 @@ namespace WeatherApp.Controllers
         {
             return Ok(new
             {
-                version = "2.0.0",
+                version = "4.3.0",
                 buildDate = DateTime.UtcNow,
                 message = "Updated via CI/CD pipeline!"
             });
