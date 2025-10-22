@@ -105,28 +105,26 @@ jobs:
     name: Update K8s Manifests
     needs: [build-backend, build-frontend]
     runs-on: self-hosted
-    if: github.ref == 'refs/heads/main'
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Update Backend deployment manifest
+      - name: Update Backend manifest
+        shell: pwsh
         run: |
-          sed -i "s|image: .*/weatherapp-backend:.*|image: ${{ env.BACKEND_IMAGE }}:${{ env.IMAGE_TAG }}|g" k8s/05-backend-deployment.yaml
+          $content = Get-Content k8s/05-backend-deployment.yaml -Raw
+          $content = $content -replace 'image: .*/weatherapp-backend:.*', "image: ${{ env.BACKEND_IMAGE }}:${{ env.IMAGE_TAG }}"
+          Set-Content k8s/05-backend-deployment.yaml -Value $content
       
-      - name: Update Frontend deployment manifest
+      - name: Update Frontend manifest
+        shell: pwsh
         run: |
-          sed -i "s|image: .*/weatherapp-frontend:.*|image: ${{ env.FRONTEND_IMAGE }}:${{ env.IMAGE_TAG }}|g" k8s/06-frontend-deployment.yaml
+          $content = Get-Content k8s/06-frontend-deployment.yaml -Raw
+          $content = $content -replace 'image: .*/weatherapp-frontend:.*', "image: ${{ env.FRONTEND_IMAGE }}:${{ env.IMAGE_TAG }}"
+          Set-Content k8s/06-frontend-deployment.yaml -Value $content
       
-      - name: Show updated manifests
-        run: |
-          echo "📝 Updated Backend manifest:"
-          grep "image:" k8s/05-backend-deployment.yaml
-          echo "📝 Updated Frontend manifest:"
-          grep "image:" k8s/06-frontend-deployment.yaml
-      
-      - name: Upload manifests as artifact
+      - name: Upload manifests
         uses: actions/upload-artifact@v4
         with:
           name: kubernetes-manifests
