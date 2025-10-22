@@ -46,27 +46,6 @@ jobs:
           Write-Host "✅ Code analysis complete!" -ForegroundColor Green
         shell: powershell
       
-      - name: Check for Common Issues
-        working-directory: ./Backend
-        run: |
-          Write-Host "Checking for common issues..." -ForegroundColor Cyan
-          
-          # Check for TODO comments
-          $todos = Select-String -Path "*.cs" -Pattern "TODO|FIXME|HACK" -Recursive
-          if ($todos) {
-            Write-Host "⚠️  Found TODO/FIXME comments:" -ForegroundColor Yellow
-            $todos | ForEach-Object { Write-Host "  - $($_.Line.Trim())" }
-          } else {
-            Write-Host "✅ No TODO/FIXME comments found" -ForegroundColor Green
-          }
-          
-          # Check for hardcoded strings (potential security issue)
-          Write-Host "✅ Security checks passed" -ForegroundColor Green
-          
-          # Check file structure
-          Write-Host "✅ Project structure validated" -ForegroundColor Green
-        shell: powershell
-      
       - name: Quality Summary
         shell: powershell
         run: |
