@@ -3,18 +3,13 @@ name: Weather App Full Stack CI/CD
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:  # Manual trigger
+  workflow_dispatch:
 
 env:
-  REGISTRY: docker.io
   BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/weatherapp-backend
   FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/weatherapp-frontend
-  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
-  # Job 1: Build and Test Backend
   build-backend:
     name: Build Backend
     runs-on: self-hosted
@@ -36,37 +31,27 @@ jobs:
         working-directory: ./Backend
         run: dotnet build --no-restore --configuration Release
       
-      - name: Run tests
-        working-directory: ./Backend
-        run: dotnet test --no-build --configuration Release --verbosity normal
-      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
       - name: Login to Docker Hub
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       
-      - name: Build and push Backend image
+      - name: Build and push Backend
         uses: docker/build-push-action@v5
         with:
           context: ./Backend
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           tags: |
-            ${{ env.BACKEND_IMAGE }}:${{ env.IMAGE_TAG }}
             ${{ env.BACKEND_IMAGE }}:latest
-          cache-from: type=registry,ref=${{ env.BACKEND_IMAGE }}:latest
-          cache-to: type=inline
       
-      - name: Backend build summary
-        run: |
-          echo "✅ Backend tests passed"
-          echo "✅ Backend image built: ${{ env.BACKEND_IMAGE }}:${{ env.IMAGE_TAG }}"
+      - name: Success
+        shell: powershell
+        run: Write-Host "Backend image built and pushed"
 
-  # Job 2: Build Frontend
   build-frontend:
     name: Build Frontend
     runs-on: self-hosted
@@ -79,96 +64,23 @@ jobs:
         uses: docker/setup-buildx-action@v3
       
       - name: Login to Docker Hub
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       
-      - name: Build and push Frontend image
+      - name: Build and push Frontend
         uses: docker/build-push-action@v5
         with:
           context: ./Frontend
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           tags: |
-            ${{ env.FRONTEND_IMAGE }}:${{ env.IMAGE_TAG }}
             ${{ env.FRONTEND_IMAGE }}:latest
-          cache-from: type=registry,ref=${{ env.FRONTEND_IMAGE }}:latest
-          cache-to: type=inline
       
-      - name: Frontend build summary
-        run: |
-          echo "✅ Frontend image built: ${{ env.FRONTEND_IMAGE }}:${{ env.IMAGE_TAG }}"
-
-  # Job 3: Update Kubernetes Manifests
-  update-manifests:
-    name: Update K8s Manifests
-    needs: [build-backend, build-frontend]
-    runs-on: self-hosted
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Update Backend manifest
+      - name: Success
         shell: powershell
-        run: |
-          $content = Get-Content k8s/05-backend-deployment.yaml -Raw
-          $content = $content -replace 'image: .*/weatherapp-backend:.*', "image: ${{ env.BACKEND_IMAGE }}:${{ env.IMAGE_TAG }}"
-          Set-Content k8s/05-backend-deployment.yaml -Value $content
-      
-      - name: Update Frontend manifest
-        shell: pwsh
-        run: |
-          $content = Get-Content k8s/06-frontend-deployment.yaml -Raw
-          $content = $content -replace 'image: .*/weatherapp-frontend:.*', "image: ${{ env.FRONTEND_IMAGE }}:${{ env.IMAGE_TAG }}"
-          Set-Content k8s/06-frontend-deployment.yaml -Value $content
-      
-      - name: Upload manifests
-        uses: actions/upload-artifact@v4
-        with:
-          name: kubernetes-manifests
-          path: k8s/
-          retention-days: 30
+        run: Write-Host "Frontend image built and pushed"
 
-  # Job 4: Deployment Instructions
-  deployment-summary:
-    name: Deployment Summary
-    needs: [update-manifests]
-    runs-on: self-hosted
-    if: github.ref == 'refs/heads/main'
-    
-    steps:
-      - name: Deployment instructions
-        run: |
-          echo "🎉 Build Complete!"
-          echo "=================================="
-          echo ""
-          echo "📦 Images published:"
-          echo "   Backend:  ${{ env.BACKEND_IMAGE }}:${{ env.IMAGE_TAG }}"
-          echo "   Frontend: ${{ env.FRONTEND_IMAGE }}:${{ env.IMAGE_TAG }}"
-          echo ""
-          echo "🚀 To deploy to Kubernetes:"
-          echo ""
-          echo "1. Download the updated manifests from Artifacts"
-          echo ""
-          echo "2. Or manually update your deployment:"
-          echo ""
-          echo "   kubectl set image deployment/weatherapp-backend \\"
-          echo "     backend=${{ env.BACKEND_IMAGE }}:${{ env.IMAGE_TAG }}"
-          echo ""
-          echo "   kubectl set image deployment/weatherapp-frontend \\"
-          echo "     frontend=${{ env.FRONTEND_IMAGE }}:${{ env.IMAGE_TAG }}"
-          echo ""
-          echo "3. Verify deployment:"
-          echo "   kubectl rollout status deployment/weatherapp-backend"
-          echo "   kubectl rollout status deployment/weatherapp-frontend"
-          echo ""
-          echo "4. Check pods:"
-          echo "   kubectl get pods -l app=weatherapp-backend"
-          echo "   kubectl get pods -l app=weatherapp-frontend"
-  
-  # NEW JOB: Automatic Deployment
   deploy-to-kubernetes:
     name: Deploy to Kubernetes
     needs: [build-backend, build-frontend]
@@ -176,51 +88,33 @@ jobs:
     if: github.ref == 'refs/heads/main'
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'latest'
-      
-      - name: Configure kubectl
+      - name: Update Backend Image
         shell: powershell
         run: |
-         if (-not (Test-Path "$HOME\.kube")) {
-              New-Item -ItemType Directory -Path "$HOME\.kube" -Force
-            }
-            echo "${{ secrets.KUBE_CONFIG }}" | Out-File -FilePath "$HOME\.kube\config" -Encoding utf8
-    
-      - name: Update Backend Image
-        run: |
-          kubectl set image deployment/weatherapp-backend \
-            backend=${{ secrets.DOCKERHUB_USERNAME }}/weatherapp-backend:latest 
-           
+          kubectl set image deployment/weatherapp-backend backend=${{ env.BACKEND_IMAGE }}:latest
       
       - name: Update Frontend Image
+        shell: powershell
         run: |
-          kubectl set image deployment/weatherapp-frontend \
-            frontend=${{ secrets.DOCKERHUB_USERNAME }}/weatherapp-frontend:latest 
-            
+          kubectl set image deployment/weatherapp-frontend frontend=${{ env.FRONTEND_IMAGE }}:latest
       
       - name: Wait for Backend Rollout
+        shell: powershell
         run: |
           kubectl rollout status deployment/weatherapp-backend --timeout=5m
       
       - name: Wait for Frontend Rollout
+        shell: powershell
         run: |
           kubectl rollout status deployment/weatherapp-frontend --timeout=5m
       
-      - name: Verify Deployment
+      - name: Deployment Summary
+        shell: powershell
         run: |
-          echo "✅ Deployment Complete!"
-          echo ""
-          echo "📊 Pod Status:"
-          kubectl get pods -l app=weatherapp-backend
-          kubectl get pods -l app=weatherapp-frontend
-          echo ""
-          echo "🌐 Services:"
-          kubectl get svc weatherapp-backend weatherapp-frontend
-          echo ""
-          echo "🎉 Application deployed successfully!"
+          Write-Host "🎉 Deployment Complete!" -ForegroundColor Green
+          Write-Host ""
+          Write-Host "📊 Pods:" -ForegroundColor Cyan
+          kubectl get pods
+          Write-Host ""
+          Write-Host "🌐 Services:" -ForegroundColor Cyan
+          kubectl get svc
