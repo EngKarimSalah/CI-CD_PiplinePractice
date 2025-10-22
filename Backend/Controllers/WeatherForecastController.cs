@@ -39,19 +39,13 @@ namespace WeatherApp.Controllers
         public async Task<ActionResult<IEnumerable<Weather>>> GetAllWeather()
         {
             var data = await _context.Weathers.ToListAsync();
+
+            //testing for the starting state
+            data.Add(new Weather { CityName = "cairo", degree = 26 });
+
             return Ok(data);
         }
 
-        [HttpGet("version")]
-        public IActionResult GetVersion()
-        {
-            return Ok(new
-            {
-                version = "4.3.0",
-                buildDate = DateTime.UtcNow,
-                message = "Updated via CI/CD pipeline!"
-            });
-        }
 
     }
 }
