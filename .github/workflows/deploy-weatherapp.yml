@@ -12,7 +12,7 @@ env:
   FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/weatherapp-frontend
 
 jobs:
-  # NEW: Code Quality Check
+  # ✅ Code Quality Check
   code-quality:
     name: Code Quality Check
     runs-on: self-hosted
@@ -46,27 +46,11 @@ jobs:
           Write-Host "✅ Code analysis complete!" -ForegroundColor Green
         shell: powershell
       
-      - name: Quality Summary
-        shell: powershell
-        run: |
-          Write-Host ""
-          Write-Host "═══════════════════════════════════" -ForegroundColor Cyan
-          Write-Host "   CODE QUALITY REPORT" -ForegroundColor Cyan
-          Write-Host "═══════════════════════════════════" -ForegroundColor Cyan
-          Write-Host ""
-          Write-Host "✅ Build Verification     PASSED" -ForegroundColor Green
-          Write-Host "✅ Code Analysis          PASSED" -ForegroundColor Green
-          Write-Host "✅ Security Checks        PASSED" -ForegroundColor Green
-          Write-Host "✅ Structure Validation   PASSED" -ForegroundColor Green
-          Write-Host ""
-          Write-Host "═══════════════════════════════════" -ForegroundColor Cyan
-          Write-Host "All quality checks passed! ✨" -ForegroundColor Green
-          Write-Host "═══════════════════════════════════" -ForegroundColor Cyan
 
-  # Build Backend (now depends on code quality)
+  # ✅ Build Backend
   build-backend:
     name: Build Backend
-    needs: code-quality  # ← Only build if quality checks pass!
+    needs: code-quality
     runs-on: self-hosted
     
     steps:
@@ -100,15 +84,18 @@ jobs:
         with:
           context: ./Backend
           push: true
-          tags: ${{ env.BACKEND_IMAGE }}:latest
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:latest
+            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
       
       - name: Success
         shell: powershell
-        run: Write-Host "✅ Backend built and pushed"
+        run: Write-Host "✅ Backend built and pushed successfully"
 
+  # ✅ Build Frontend
   build-frontend:
     name: Build Frontend
-    needs: code-quality  # Frontend also waits for quality checks
+    needs: code-quality
     runs-on: self-hosted
     
     steps:
@@ -129,12 +116,15 @@ jobs:
         with:
           context: ./Frontend
           push: true
-          tags: ${{ env.FRONTEND_IMAGE }}:latest
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:latest
+            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
       
       - name: Success
         shell: powershell
-        run: Write-Host "✅ Frontend built and pushed"
+        run: Write-Host "✅ Frontend built and pushed successfully"
 
+  # ✅ Deploy to Kubernetes
   deploy-to-kubernetes:
     name: Deploy to Kubernetes
     needs: [build-backend, build-frontend]
@@ -145,17 +135,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Apply Manifests
+      - name: Apply Base Manifests
         shell: powershell
         run: |
+          Write-Host "🧩 Applying Kubernetes manifests..." -ForegroundColor Cyan
           kubectl apply -f k8s/05-backend-deployment.yaml
           kubectl apply -f k8s/06-frontend-deployment.yaml
       
-      - name: Restart Deployments
-        shell: powershell
+      - name: Update Images with Current Commit Tag
+        shell: bash
         run: |
-          kubectl rollout restart deployment/weatherapp-backend
-          kubectl rollout restart deployment/weatherapp-frontend
+          echo "🚀 Updating deployments with new image tags..."
+          kubectl set image deployment/weatherapp-backend weatherapp-backend=${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+          kubectl set image deployment/weatherapp-frontend weatherapp-frontend=${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+      
+      - name: Wait for Rollout
+        shell: bash
+        run: |
+          echo "⏳ Waiting for deployments to finish rolling out..."
+          kubectl rollout status deployment/weatherapp-backend
+          kubectl rollout status deployment/weatherapp-frontend
       
       - name: Show Status
         shell: powershell
