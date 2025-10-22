@@ -45,12 +45,11 @@ jobs:
         with:
           context: ./Backend
           push: true
-          tags: |
-            ${{ env.BACKEND_IMAGE }}:latest
+          tags: ${{ env.BACKEND_IMAGE }}:latest
       
       - name: Success
         shell: powershell
-        run: Write-Host "Backend image built and pushed"
+        run: Write-Host "Backend built successfully"
 
   build-frontend:
     name: Build Frontend
@@ -74,12 +73,11 @@ jobs:
         with:
           context: ./Frontend
           push: true
-          tags: |
-            ${{ env.FRONTEND_IMAGE }}:latest
+          tags: ${{ env.FRONTEND_IMAGE }}:latest
       
       - name: Success
         shell: powershell
-        run: Write-Host "Frontend image built and pushed"
+        run: Write-Host "Frontend built successfully"
 
   deploy-to-kubernetes:
     name: Deploy to Kubernetes
@@ -88,33 +86,23 @@ jobs:
     if: github.ref == 'refs/heads/main'
     
     steps:
-      - name: Update Backend Image
-        shell: powershell
-        run: |
-          kubectl set image deployment/weatherapp-backend backend=${{ env.BACKEND_IMAGE }}:latest
+      - name: Checkout code
+        uses: actions/checkout@v4
       
-      - name: Update Frontend Image
+      - name: Apply Manifests
         shell: powershell
         run: |
-          kubectl set image deployment/weatherapp-frontend frontend=${{ env.FRONTEND_IMAGE }}:latest
+          kubectl apply -f k8s/05-backend-deployment.yaml
+          kubectl apply -f k8s/06-frontend-deployment.yaml
       
-      - name: Wait for Backend Rollout
+      - name: Restart Deployments
         shell: powershell
         run: |
-          kubectl rollout status deployment/weatherapp-backend --timeout=5m
+          kubectl rollout restart deployment/weatherapp-backend
+          kubectl rollout restart deployment/weatherapp-frontend
       
-      - name: Wait for Frontend Rollout
+      - name: Show Status
         shell: powershell
         run: |
-          kubectl rollout status deployment/weatherapp-frontend --timeout=5m
-      
-      - name: Deployment Summary
-        shell: powershell
-        run: |
-          Write-Host "🎉 Deployment Complete!" -ForegroundColor Green
-          Write-Host ""
-          Write-Host "📊 Pods:" -ForegroundColor Cyan
+          Write-Host "Deployment Complete!" -ForegroundColor Green
           kubectl get pods
-          Write-Host ""
-          Write-Host "🌐 Services:" -ForegroundColor Cyan
-          kubectl get svc
