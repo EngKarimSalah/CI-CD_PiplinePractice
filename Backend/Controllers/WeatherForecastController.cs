@@ -41,7 +41,7 @@ namespace WeatherApp.Controllers
             var data = await _context.Weathers.ToListAsync();
 
             //testing for the starting state
-            data.Add(new Weather { CityName = "cairo", degree = 26 });
+            data.Add(new Weather { CityName = "Alexandria", degree = 26 });
 
             return Ok(data);
         }
